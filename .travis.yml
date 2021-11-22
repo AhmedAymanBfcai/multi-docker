@@ -1,0 +1,35 @@
+# Travis Setup Flow:
+# - Specify docker as a dependency
+# - Build test version of React project
+# - Run tests
+# - Build prod versions of all projects.
+# - Push all to docker hub.
+# - Tell Elastic Beanstalk to update.
+sudo: required
+
+# Specify docker as a dependency
+services:
+  - docker
+
+# - Build test version of React project
+before_install:
+  - docker build -t ahmadayman/react-test -f ./client/Dockerfile.dev ./client # As If you want to run some test you have to get an image to run your tests out of container.
+
+# - Run tests
+script:
+  - docker run ahmadayman/react-test npm test  -- --coverage # Coverage will make sure that test script eventually exits with a status code of either 0 or not 0 if the test failed.
+
+# - Build prod versions images for each folder.
+after_success:
+  - docker build -t ahmadayman/multi-client ./client
+  - docker build -t ahmadayman/multi-nginx ./nginx
+  - docker build -t ahmadayman/multi-server ./server
+  - docker build -t ahmadayman/multi-worker ./worker
+  # Log in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+
+  # To push image to docker CLI
+  - docker push ahmadayman/multi-client
+  - docker push ahmadayman/multi-nginx
+  - docker push ahmadayman/multi-server
+  - docker push ahmadayman/multi-worker
