@@ -1,0 +1,42 @@
+version: '3'
+services:
+  postgres:
+    image: 'postgres:latest'
+  redis:
+    image: 'redis:latest'
+  nginx:
+    restart: always # As we need nginx is running always if any of other contianers crashes, So we set the server always in a restarting status.
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - '3050:80' # That's means the port 3050 ( The one we acces in the browser) in my your machine will be port mapped into 80 inside the container.
+  api:
+    build: # We pass build options to tell docker-compose how to build an image and in which context it can react it needs.
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes: # We set up some volumes to make sure that any time we change our source code those changes automatically get reflected inside of the container.
+      - /app/node_modules
+      - ./server:/app # That's mean that anytime our applicatoin tries to access anything inside of the app directory inside of the container except node_modules folder. It's going to get redirected to the server directory.
+    environment: #  We set up environemnt variables as we want to customize the way in which our contianer behaves when it started up. And how it will find the database host, port, ..
+      - REDIS_HOST=redis # Redis Host is a kind of URL that our server shoud react out to access redis.
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgress_password
+      - PGPORT=5432
+  client:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules # To make sure that node_modules directory inside the container does not get overwritten by any node_modules other we have.
+      - ./client:/app # That's mean that everything inside the client directory shoud be shared with the app folder inside the container.
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app # Everything inside the worker folder will be mapped into app folder inside of a container.
